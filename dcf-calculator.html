@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../style.css">
+  <title>DCF Valuation Calculator | Alexander Khapchik</title>
+</head>
+<body>
+  <main class="detail">
+    <a class="back" href="../index.html#projects">&larr; Back to portfolio</a>
+    <h1>DCF valuation calculator</h1>
+    <p class="context">Interactive finance tool, HTML and JavaScript</p>
+    <p>Estimates a company's intrinsic value per share with a five-year discounted cash flow model and a Gordon Growth terminal value. Change any input and the valuation updates instantly. Dollar figures are in millions, except per-share values.</p>
+
+    <div class="calc">
+      <label>Current free cash flow ($M)<input id="fcf" type="number" value="1000" step="any"></label>
+      <label>Growth rate, years 1–5 (%)<input id="g" type="number" value="8" step="any"></label>
+      <label>Terminal growth rate (%)<input id="tg" type="number" value="2.5" step="any"></label>
+      <label>Discount rate / WACC (%)<input id="r" type="number" value="9" step="any"></label>
+      <label>Net debt ($M)<input id="debt" type="number" value="2000" step="any"></label>
+      <label>Shares outstanding (M)<input id="shares" type="number" value="500" step="any"></label>
+    </div>
+    <p id="err" class="error" role="alert" hidden></p>
+
+    <div class="result" aria-live="polite">
+      <div>Intrinsic value per share</div>
+      <div class="big" id="pps">–</div>
+      <div id="summary"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Year</th><th>Free cash flow</th><th>Discount factor</th><th>Present value</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <h2>How it works</h2>
+    <ul>
+      <li>Free cash flow grows at the chosen rate for five years, and each year is discounted at the WACC.</li>
+      <li>Terminal value = FCF in year 5 &times; (1 + terminal growth) &divide; (WACC &minus; terminal growth), discounted back five years.</li>
+      <li>Enterprise value = sum of discounted cash flows + discounted terminal value. Equity value = enterprise value &minus; net debt.</li>
+    </ul>
+    <h2>Tools</h2>
+    <p>HTML, CSS, JavaScript</p>
+  </main>
+<script>
+  const ids = ["fcf","g","tg","r","debt","shares"];
+  const usd = n => n.toLocaleString("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0});
+  const m = n => usd(n) + "M";
+  function calc(){
+    const v = Object.fromEntries(ids.map(i => [i, parseFloat(document.getElementById(i).value)]));
+    const err = document.getElementById("err");
+    const fail = msg => { err.textContent = msg; err.hidden = false; document.getElementById("pps").textContent = "–"; document.getElementById("summary").textContent = ""; document.getElementById("rows").innerHTML = ""; };
+    if (ids.some(i => isNaN(v[i]))) return fail("Fill in every field with a number.");
+    if (v.r <= v.tg) return fail("The discount rate must be higher than the terminal growth rate.");
+    if (v.shares <= 0) return fail("Shares outstanding must be greater than zero.");
+    err.hidden = true;
+    const g = v.g/100, tg = v.tg/100, r = v.r/100;
+    let cf = v.fcf, pvSum = 0, rows = "";
+    for (let t = 1; t <= 5; t++){
+      cf *= (1+g);
+      const df = 1/Math.pow(1+r,t), pv = cf*df;
+      pvSum += pv;
+      rows += "<tr><td>"+t+"</td><td>"+m(cf)+"</td><td>"+df.toFixed(4)+"</td><td>"+m(pv)+"</td></tr>";
+    }
+    const tv = cf*(1+tg)/(r-tg), pvTv = tv/Math.pow(1+r,5);
+    const ev = pvSum + pvTv, eq = ev - v.debt;
+    rows += "<tr><td>Terminal value</td><td>"+m(tv)+"</td><td>"+(1/Math.pow(1+r,5)).toFixed(4)+"</td><td>"+m(pvTv)+"</td></tr>";
+    document.getElementById("rows").innerHTML = rows;
+    document.getElementById("pps").textContent = (eq/v.shares).toLocaleString("en-US",{style:"currency",currency:"USD"});
+    document.getElementById("summary").textContent = "Enterprise value " + m(ev) + ", equity value " + m(eq) + ". Terminal value is " + Math.round(pvTv/ev*100) + "% of enterprise value.";
+  }
+  ids.forEach(i => document.getElementById(i).addEventListener("input", calc));
+  calc();
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../style.css">
+  <title>Tariff Impact Calculator | Alexander Khapchik</title>
+</head>
+<body>
+  <main class="detail">
+    <a class="back" href="../index.html#projects">&larr; Back to portfolio</a>
+    <h1>Tariff impact calculator</h1>
+    <p class="context">Interactive policy analysis tool, HTML and JavaScript</p>
+    <p>Shows who bears the cost of a tariff. Enter an imported product's price, the tariff rate, and how much of the tariff the importer passes on to consumers. The tool splits the cost between consumers and the importer and estimates total tariff revenue collected by the government.</p>
+
+    <div class="calc">
+      <label>Import price per unit ($)<input id="price" type="number" value="50" step="any"></label>
+      <label>Tariff rate (%)<input id="rate" type="number" value="25" step="any"></label>
+      <label>Pass-through to consumers (%)<input id="pass" type="number" value="70" step="any"></label>
+      <label>Units imported per year<input id="units" type="number" value="1000000" step="any"></label>
+    </div>
+    <p id="err" class="error" role="alert" hidden></p>
+
+    <div class="result" aria-live="polite">
+      <div>Consumer price increase per unit</div>
+      <div class="big" id="consumer">–</div>
+      <div id="summary"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Item</th><th>Per unit</th><th>Per year</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <h2>How it works</h2>
+    <ul>
+      <li>Tariff per unit = import price &times; tariff rate. This is an ad valorem tariff, the most common type.</li>
+      <li>The pass-through rate sets the share of the tariff charged to consumers through higher prices. The importer absorbs the rest through lower margins.</li>
+      <li>Revenue assumes import volume stays the same. In practice, higher prices usually reduce imports, so actual revenue would be lower.</li>
+    </ul>
+    <h2>Tools</h2>
+    <p>HTML, CSS, JavaScript</p>
+  </main>
+<script>
+  const ids = ["price","rate","pass","units"];
+  const usd = n => n.toLocaleString("en-US",{style:"currency",currency:"USD"});
+  function calc(){
+    const v = Object.fromEntries(ids.map(i => [i, parseFloat(document.getElementById(i).value)]));
+    const err = document.getElementById("err");
+    const fail = msg => { err.textContent = msg; err.hidden = false; document.getElementById("consumer").textContent = "–"; document.getElementById("summary").textContent = ""; document.getElementById("rows").innerHTML = ""; };
+    if (ids.some(i => isNaN(v[i]))) return fail("Fill in every field with a number.");
+    if (v.price < 0 || v.rate < 0 || v.units < 0) return fail("Price, tariff rate, and units cannot be negative.");
+    if (v.pass < 0 || v.pass > 100) return fail("Pass-through must be between 0% and 100%.");
+    err.hidden = true;
+    const tariff = v.price*v.rate/100, cons = tariff*v.pass/100, imp = tariff - cons;
+    const row = (k,a) => "<tr><td>"+k+"</td><td>"+usd(a)+"</td><td>"+usd(a*v.units)+"</td></tr>";
+    document.getElementById("rows").innerHTML = row("Tariff paid", tariff) + row("Paid by consumers", cons) + row("Absorbed by importer", imp);
+    document.getElementById("consumer").textContent = usd(cons);
+    const newPrice = v.price + cons;
+    document.getElementById("summary").textContent = "Price rises from " + usd(v.price) + " to " + usd(newPrice) + " (" + (v.price ? (cons/v.price*100).toFixed(1) : "0.0") + "%). Estimated government revenue: " + usd(tariff*v.units) + " per year.";
+  }
+  ids.forEach(i => document.getElementById(i).addEventListener("input", calc));
+  calc();
+</script>
+</body>
+</html>
